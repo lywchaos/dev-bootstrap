@@ -68,7 +68,6 @@ class TestInstallTool:
         mock_run.assert_called_once_with(
             ["brew", "install", "git"],
             check=True,
-            capture_output=True,
             text=True,
         )
 
@@ -82,7 +81,6 @@ class TestInstallTool:
             "curl -sL https://example.com | bash",
             shell=True,
             check=True,
-            capture_output=True,
             text=True,
         )
 

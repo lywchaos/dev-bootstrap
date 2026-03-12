@@ -43,7 +43,7 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
         pkg_name = tool.install[platform.pkg_manager]
         cmd = platform.install_cmd(pkg_name)
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, text=True)
             return InstallResult(
                 name=tool.name, status="installed", success=True, message=""
             )
@@ -52,7 +52,7 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
                 name=tool.name,
                 status="failed",
                 success=False,
-                message=e.stderr or str(e),
+                message=str(e),
             )
 
     # Fall back to script
@@ -62,7 +62,6 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
                 tool.install["script"],
                 shell=True,
                 check=True,
-                capture_output=True,
                 text=True,
             )
             return InstallResult(
@@ -73,7 +72,7 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
                 name=tool.name,
                 status="failed",
                 success=False,
-                message=e.stderr or str(e),
+                message=str(e),
             )
 
     return InstallResult(

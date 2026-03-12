@@ -70,34 +70,47 @@ class TestList:
 
 
 class TestInstall:
-    @patch("devstrap.cli.install_all")
+    @patch("devstrap.cli.install_tool")
+    @patch("devstrap.cli.check_tool")
     @patch("devstrap.cli.detect_platform")
     @patch("devstrap.cli.load_manifest")
     def test_install_all(
-        self, mock_load, mock_detect, mock_install, mock_tools, mock_platform
+        self,
+        mock_load,
+        mock_detect,
+        mock_check,
+        mock_install,
+        mock_tools,
+        mock_platform,
     ):
         mock_load.return_value = mock_tools
         mock_detect.return_value = mock_platform
-        mock_install.return_value = [
-            InstallResult(
-                name="git", status="skipped", success=True, message="Already installed"
-            ),
-            InstallResult(name="navi", status="installed", success=True, message=""),
-        ]
+        mock_check.side_effect = [True, False]
+        mock_install.return_value = InstallResult(
+            name="navi", status="installed", success=True, message=""
+        )
         result = runner.invoke(app, ["install"])
         assert result.exit_code == 0
 
-    @patch("devstrap.cli.install_all")
+    @patch("devstrap.cli.install_tool")
+    @patch("devstrap.cli.check_tool")
     @patch("devstrap.cli.detect_platform")
     @patch("devstrap.cli.load_manifest")
     def test_install_single_tool(
-        self, mock_load, mock_detect, mock_install, mock_tools, mock_platform
+        self,
+        mock_load,
+        mock_detect,
+        mock_check,
+        mock_install,
+        mock_tools,
+        mock_platform,
     ):
         mock_load.return_value = mock_tools
         mock_detect.return_value = mock_platform
-        mock_install.return_value = [
-            InstallResult(name="git", status="installed", success=True, message=""),
-        ]
+        mock_check.return_value = False
+        mock_install.return_value = InstallResult(
+            name="git", status="installed", success=True, message=""
+        )
         result = runner.invoke(app, ["install", "git"])
         assert result.exit_code == 0
 
@@ -112,39 +125,37 @@ class TestInstall:
         assert result.exit_code != 0
         assert "not found" in result.output.lower()
 
-    @patch("devstrap.cli.install_all")
+    @patch("devstrap.cli.check_tool")
     @patch("devstrap.cli.detect_platform")
     @patch("devstrap.cli.load_manifest")
     def test_install_dry_run(
-        self, mock_load, mock_detect, mock_install, mock_tools, mock_platform
+        self, mock_load, mock_detect, mock_check, mock_tools, mock_platform
     ):
         mock_load.return_value = mock_tools
         mock_detect.return_value = mock_platform
-        mock_install.return_value = [
-            InstallResult(
-                name="git", status="skipped", success=True, message="Already installed"
-            ),
-            InstallResult(
-                name="navi",
-                status="would_install",
-                success=True,
-                message="brew install navi",
-            ),
-        ]
+        mock_check.side_effect = [True, False]
         result = runner.invoke(app, ["install", "--dry-run"])
         assert result.exit_code == 0
 
-    @patch("devstrap.cli.install_all")
+    @patch("devstrap.cli.install_tool")
+    @patch("devstrap.cli.check_tool")
     @patch("devstrap.cli.detect_platform")
     @patch("devstrap.cli.load_manifest")
     def test_install_exits_nonzero_on_failure(
-        self, mock_load, mock_detect, mock_install, mock_tools, mock_platform
+        self,
+        mock_load,
+        mock_detect,
+        mock_check,
+        mock_install,
+        mock_tools,
+        mock_platform,
     ):
         mock_load.return_value = mock_tools
         mock_detect.return_value = mock_platform
-        mock_install.return_value = [
-            InstallResult(name="git", status="failed", success=False, message="error"),
-        ]
+        mock_check.return_value = False
+        mock_install.return_value = InstallResult(
+            name="git", status="failed", success=False, message="error"
+        )
         result = runner.invoke(app, ["install"])
         assert result.exit_code != 0
 

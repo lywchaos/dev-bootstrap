@@ -82,3 +82,13 @@ tools:
     install:
       brew: uv
       script: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+  - name: zoxide
+    description: Smarter cd command
+    check: zoxide --version
+    install:
+      brew: zoxide
+      apt: zoxide
+      dnf: zoxide
+      pacman: zoxide
+      script: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"

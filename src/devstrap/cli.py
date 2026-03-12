@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from devstrap import __version__
-from devstrap.installer import InstallResult, check_tool, install_all
+from devstrap.installer import InstallResult, check_tool, install_tool
 from devstrap.models import ToolConfig, load_manifest
 from devstrap.platform import Platform, detect_platform
 
@@ -95,11 +95,50 @@ def install(
             raise typer.Exit(code=1)
         tools = _interactive_select(tools)
 
-    results = install_all(tools, platform, dry_run=dry_run)
-    _print_results(results, dry_run=dry_run)
+    results = _install_tools(tools, platform, dry_run=dry_run)
+    _print_summary(results, dry_run=dry_run)
 
     if any(not r.success for r in results):
         raise typer.Exit(code=1)
+
+
+def _install_tools(
+    tools: list[ToolConfig], platform: Platform, dry_run: bool = False
+) -> list[InstallResult]:
+    results: list[InstallResult] = []
+    for tool in tools:
+        result = _process_tool(tool, platform, dry_run=dry_run)
+        results.append(result)
+        _print_result(result)
+    return results
+
+
+def _process_tool(
+    tool: ToolConfig, platform: Platform, dry_run: bool = False
+) -> InstallResult:
+    console.print(f"  [dim]Checking {tool.name}...[/dim]", end="\r")
+    if check_tool(tool):
+        return InstallResult(
+            name=tool.name,
+            status="skipped",
+            success=True,
+            message="Already installed",
+        )
+    if dry_run:
+        return InstallResult(
+            name=tool.name,
+            status="would_install",
+            success=True,
+            message=_describe_install(tool, platform),
+        )
+    console.print(f"  [bold]Installing {tool.name}...[/bold]")
+    return install_tool(tool, platform)
+
+
+def _print_result(result: InstallResult) -> None:
+    icon, label = _STATUS_FORMAT.get(result.status, ("?", result.status))
+    text = label if label else result.message
+    console.print(f"  {icon} {result.name} — {text}")
 
 
 def _interactive_select(tools: list[ToolConfig]) -> list[ToolConfig]:
@@ -140,13 +179,17 @@ _STATUS_FORMAT = {
 }
 
 
-def _print_results(results: list[InstallResult], dry_run: bool = False) -> None:
-    console.print()
-    for r in results:
-        icon, label = _STATUS_FORMAT.get(r.status, ("?", r.status))
-        text = label if label else r.message
-        console.print(f"  {icon} {r.name} — {text}")
+def _describe_install(tool: ToolConfig, platform: Platform) -> str:
+    if platform.pkg_manager and platform.pkg_manager in tool.install:
+        pkg_name = tool.install[platform.pkg_manager]
+        cmd = platform.install_cmd(pkg_name)
+        return " ".join(cmd)
+    if "script" in tool.install:
+        return tool.install["script"]
+    return f"No install method for {platform.os_name} ({platform.pkg_manager})"
 
+
+def _print_summary(results: list[InstallResult], dry_run: bool = False) -> None:
     console.print()
     counts = {s: sum(1 for r in results if r.status == s) for s in _STATUS_FORMAT}
 
