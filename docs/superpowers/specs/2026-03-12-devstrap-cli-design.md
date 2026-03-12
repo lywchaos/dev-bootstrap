@@ -112,13 +112,13 @@ Resolution order: detect package manager → use matching key → fall back to `
 | `devstrap install` | Install all tools (skips already-installed) |
 | `devstrap install <name>` | Install a specific tool by name |
 | `devstrap install -i / --interactive` | Checkbox selector to pick tools (requires TTY; errors early if stdin is not a terminal) |
-| `devstrap list` | Table of all tools with name, description, install method for current platform, and installed/missing status |
+| `devstrap list` | Table of all tools with name, description, install method for current platform, and installed/missing status (runs each tool's `check` command with same timeout semantics as `install`) |
 | `devstrap install --dry-run` | Show tool names and the exact commands that would run, without executing |
 | `devstrap --version` | Show devstrap version |
 
 Global option: `--manifest <path>` overrides the bundled `tools.yaml`.
 
-`devstrap install <name>` exits with error and message if `<name>` is not found in the manifest.
+`devstrap install <name>` exits with error and message if `<name>` is not found in the manifest. Name validation occurs before any other logic (including `--dry-run` evaluation).
 
 All install operations run **sequentially** (no parallel installs) to avoid package manager lock conflicts.
 
