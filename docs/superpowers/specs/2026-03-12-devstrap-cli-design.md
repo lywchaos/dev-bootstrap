@@ -26,8 +26,8 @@ Usage: `curl -fsSL https://raw.githubusercontent.com/<user>/dev-bootstrap/main/b
 
 `bootstrap.sh` does the following:
 
-1. Check if `uv` is installed (`command -v uv`); if not, install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
-2. Clone the `dev-bootstrap` repo to `~/.local/share/devstrap/` (or use existing clone if present)
+1. Check if `uv` is installed (`command -v uv`); if not, install via `curl -LsSf https://astral.sh/uv/install.sh | sh`, then source `$HOME/.local/bin/env` (or add `$HOME/.local/bin` to `PATH`) so `uv` is available in the current shell session
+2. Clone the `dev-bootstrap` repo to `~/.local/share/devstrap/` (if no existing clone). If a clone already exists, run `git -C ~/.local/share/devstrap pull --ff-only` to update to latest manifest and code
 3. `cd` into the repo and run `uv run devstrap install`
 
 This means the project is always run from a local clone. `uv run` handles venv creation and dependency installation automatically via `pyproject.toml`.
@@ -101,6 +101,8 @@ Fields:
 
 Resolution order: detect package manager → use matching key → fall back to `script` → warn if nothing matches. Partial platform coverage in the manifest is expected — not every tool needs an entry for every package manager.
 
+**Trust model:** The `tools.yaml` manifest lives in the user's own repo. `script` entries can run arbitrary shell commands, which is acceptable because the user controls the manifest content. No additional trust prompt is needed beyond what `bootstrap.sh` already implies (running code from the user's own repo).
+
 **Note on `uv`:** `uv` appears in the manifest so `devstrap check` reports it, but `bootstrap.sh` already ensures it is installed before devstrap runs. The check command will always succeed; this is intentional for completeness.
 
 ### CLI Commands
@@ -110,9 +112,12 @@ Resolution order: detect package manager → use matching key → fall back to `
 | `devstrap install` | Install all tools (skips already-installed) |
 | `devstrap install <name>` | Install a specific tool by name |
 | `devstrap install -i / --interactive` | Checkbox selector to pick tools |
-| `devstrap list` | Show all tools and their install status |
-| `devstrap check` | Verify which tools are installed vs missing |
-| `devstrap install --dry-run` | Show what would be installed without executing |
+| `devstrap list` | Table of all tools with name, description, and installed/missing status |
+| `devstrap install --dry-run` | Show tool names and the exact commands that would run, without executing |
+
+Global option: `--manifest <path>` overrides the bundled `tools.yaml`.
+
+`devstrap install <name>` exits with error and message if `<name>` is not found in the manifest.
 
 All install operations run **sequentially** (no parallel installs) to avoid package manager lock conflicts.
 
