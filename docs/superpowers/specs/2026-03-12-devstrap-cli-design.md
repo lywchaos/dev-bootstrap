@@ -22,14 +22,15 @@ A cross-platform (macOS/Linux) CLI tool that installs a curated set of developme
 
 ### Bootstrap Flow
 
-```
-curl bootstrap.sh | sh
-  → installs uv (if missing)
-  → uv run devstrap install
-    → reads tools.yaml
-    → detects platform & package manager
-    → installs each tool
-```
+Usage: `curl -fsSL https://raw.githubusercontent.com/<user>/dev-bootstrap/main/bootstrap.sh | sh`
+
+`bootstrap.sh` does the following:
+
+1. Check if `uv` is installed (`command -v uv`); if not, install via `curl -LsSf https://astral.sh/uv/install.sh | sh`
+2. Clone the `dev-bootstrap` repo to `~/.local/share/devstrap/` (or use existing clone if present)
+3. `cd` into the repo and run `uv run devstrap install`
+
+This means the project is always run from a local clone. `uv run` handles venv creation and dependency installation automatically via `pyproject.toml`.
 
 ### Project Structure
 
@@ -43,8 +44,8 @@ dev-bootstrap/
 │       ├── cli.py           # Typer app: install, list, check commands
 │       ├── installer.py     # Install orchestration per tool
 │       ├── platform.py      # OS & package manager detection
-│       └── models.py        # Dataclass models for tool config
-├── tools.yaml               # Tool manifest
+│       ├── models.py        # Dataclass models for tool config
+│       └── tools.yaml       # Tool manifest (bundled via importlib.resources)
 └── tests/
     ├── test_platform.py
     ├── test_installer.py
@@ -94,11 +95,13 @@ Fields:
 
 - **`name`** — tool identifier
 - **`description`** — human-readable summary
-- **`check`** — shell command to verify installation (exit 0 = installed)
-- **`install.<manager>`** — package name for that manager (runs `<manager> install <name>`)
-- **`install.script`** — fallback shell command when no native package exists
+- **`check`** — shell command to verify installation (exit code 0 = installed, non-zero = missing; 5-second timeout to avoid hangs)
+- **`install.<manager>`** — package name for that manager. The key (`brew`, `apt`, `dnf`, `pacman`) maps to the actual command shown in the Platform Detection table (e.g., `apt` key → `sudo apt-get install -y <pkg>`)
+- **`install.script`** — fallback shell command when no native package exists. Used when the detected package manager has no entry for this tool.
 
-Resolution order: detect package manager → use matching key → fall back to `script` → warn if nothing matches.
+Resolution order: detect package manager → use matching key → fall back to `script` → warn if nothing matches. Partial platform coverage in the manifest is expected — not every tool needs an entry for every package manager.
+
+**Note on `uv`:** `uv` appears in the manifest so `devstrap check` reports it, but `bootstrap.sh` already ensures it is installed before devstrap runs. The check command will always succeed; this is intentional for completeness.
 
 ### CLI Commands
 
@@ -109,12 +112,15 @@ Resolution order: detect package manager → use matching key → fall back to `
 | `devstrap install -i / --interactive` | Checkbox selector to pick tools |
 | `devstrap list` | Show all tools and their install status |
 | `devstrap check` | Verify which tools are installed vs missing |
+| `devstrap install --dry-run` | Show what would be installed without executing |
+
+All install operations run **sequentially** (no parallel installs) to avoid package manager lock conflicts.
 
 ### Platform Detection (`platform.py`)
 
 1. `platform.system()` → `Darwin` or `Linux`
-2. macOS: check for `brew` via `shutil.which`; prompt to install Homebrew if missing
-3. Linux: check for `apt`, `dnf`, `pacman` (first found wins)
+2. macOS: check for `brew` via `shutil.which`; if missing, ask user whether to install Homebrew. If declined, continue with `script`-only tools (tools without a `script` fallback will be skipped with a warning).
+3. Linux: check for `apt-get`, `dnf`, `pacman` in that priority order (first found wins). This order is intentional: Debian/Ubuntu (apt) is most common, then Fedora (dnf), then Arch (pacman).
 4. Returns a `Platform` dataclass with `os_name`, `pkg_manager_name`, and `install_cmd(package)` method
 
 Package manager install commands:
@@ -142,7 +148,15 @@ for each tool in manifest:
 
 ### Interactive Mode
 
-When `--interactive` is passed, use `InquirerPy` (or `rich` prompts) to present a checkbox list of all tools. Pre-check tools that are not yet installed. User selects which to install, then the normal install flow runs on the selected subset.
+When `--interactive` is passed, use `InquirerPy` to present a checkbox list of all tools. Pre-check tools that are not yet installed. User selects which to install, then the normal install flow runs on the selected subset.
+
+### Sudo Handling
+
+Linux install commands use `sudo`. The CLI lets each `subprocess.run` call prompt for the password naturally (sudo's own credential caching handles subsequent calls). No upfront sudo prompt.
+
+### Manifest Location
+
+`tools.yaml` is bundled in the Python package using `importlib.resources` (referenced from `src/devstrap/`). This means the manifest ships with the package and is always findable regardless of working directory. Users who want to customize can pass `--manifest <path>` to override.
 
 ### Error Handling
 
