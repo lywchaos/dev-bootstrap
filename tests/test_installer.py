@@ -1,9 +1,11 @@
-from unittest.mock import patch, MagicMock
 import subprocess
+from unittest.mock import MagicMock, patch
+
 import pytest
+
+from devstrap.installer import InstallResult, check_tool, install_all, install_tool
 from devstrap.models import ToolConfig
 from devstrap.platform import Platform
-from devstrap.installer import check_tool, install_tool, install_all, InstallResult
 
 
 @pytest.fixture
@@ -102,7 +104,9 @@ class TestInstallTool:
 class TestInstallAll:
     @patch("devstrap.installer.install_tool")
     @patch("devstrap.installer.check_tool")
-    def test_skips_installed_tools(self, mock_check, mock_install, git_tool, mac_platform):
+    def test_skips_installed_tools(
+        self, mock_check, mock_install, git_tool, mac_platform
+    ):
         mock_check.return_value = True
         results = install_all([git_tool], mac_platform)
         assert len(results) == 1
@@ -111,9 +115,13 @@ class TestInstallAll:
 
     @patch("devstrap.installer.install_tool")
     @patch("devstrap.installer.check_tool")
-    def test_installs_missing_tools(self, mock_check, mock_install, git_tool, mac_platform):
+    def test_installs_missing_tools(
+        self, mock_check, mock_install, git_tool, mac_platform
+    ):
         mock_check.return_value = False
-        mock_install.return_value = InstallResult(name="git", status="installed", success=True, message="")
+        mock_install.return_value = InstallResult(
+            name="git", status="installed", success=True, message=""
+        )
         results = install_all([git_tool], mac_platform)
         assert len(results) == 1
         assert results[0].status == "installed"

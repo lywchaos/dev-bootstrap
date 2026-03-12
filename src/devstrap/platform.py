@@ -31,6 +31,7 @@ class Platform:
 
 def detect_platform() -> Platform:
     os_name = platform_system()
+    pkg_manager: str | None = None
 
     if os_name == "Darwin":
         if shutil.which("brew"):
@@ -38,13 +39,10 @@ def detect_platform() -> Platform:
         else:
             pkg_manager = _handle_missing_homebrew()
     elif os_name == "Linux":
-        pkg_manager = None
         for binary in _LINUX_MANAGERS:
             if shutil.which(binary):
                 pkg_manager = _LINUX_MANAGER_KEY[binary]
                 break
-    else:
-        pkg_manager = None
 
     return Platform(os_name=os_name, pkg_manager=pkg_manager)
 
@@ -63,7 +61,9 @@ def _handle_missing_homebrew() -> str | None:
             subprocess.run(homebrew_cmd, shell=True, check=True)
             return "brew"
         except subprocess.CalledProcessError:
-            _console_print("Warning: Failed to install Homebrew. Falling back to script-only installs.")
+            _console_print(
+                "Warning: Failed to install Homebrew. Falling back to script-only installs."
+            )
             return None
 
     # Interactive: ask user
@@ -74,13 +74,18 @@ def _handle_missing_homebrew() -> str | None:
             subprocess.run(homebrew_cmd, shell=True, check=True)
             return "brew"
         except subprocess.CalledProcessError:
-            _console_print("Warning: Failed to install Homebrew. Falling back to script-only installs.")
+            _console_print(
+                "Warning: Failed to install Homebrew. Falling back to script-only installs."
+            )
             return None
     else:
-        _console_print("Skipping Homebrew. Only tools with 'script' fallback will be installed.")
+        _console_print(
+            "Skipping Homebrew. Only tools with 'script' fallback will be installed."
+        )
         return None
 
 
 def _console_print(msg: str) -> None:
     from rich.console import Console
+
     Console(stderr=True).print(msg)

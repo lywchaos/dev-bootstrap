@@ -19,7 +19,9 @@ class ToolConfig:
         if "name" not in data:
             raise ValueError("Tool entry missing required field: 'name'")
         if "install" not in data:
-            raise ValueError(f"Tool '{data.get('name', '?')}' missing required field: 'install'")
+            raise ValueError(
+                f"Tool '{data.get('name', '?')}' missing required field: 'install'"
+            )
         return cls(
             name=data["name"],
             description=data.get("description", ""),

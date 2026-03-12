@@ -1,31 +1,45 @@
 from unittest.mock import patch
+
 import pytest
-from devstrap.platform import detect_platform, Platform
+
+from devstrap.platform import Platform, detect_platform
 
 
 class TestDetectPlatform:
-    @patch("devstrap.platform.shutil.which", side_effect=lambda cmd: "/opt/homebrew/bin/brew" if cmd == "brew" else None)
+    @patch(
+        "devstrap.platform.shutil.which",
+        side_effect=lambda cmd: "/opt/homebrew/bin/brew" if cmd == "brew" else None,
+    )
     @patch("devstrap.platform.platform_system", return_value="Darwin")
     def test_macos_with_brew(self, mock_sys, mock_which):
         p = detect_platform()
         assert p.os_name == "Darwin"
         assert p.pkg_manager == "brew"
 
-    @patch("devstrap.platform.shutil.which", side_effect=lambda cmd: "/usr/bin/apt-get" if cmd == "apt-get" else None)
+    @patch(
+        "devstrap.platform.shutil.which",
+        side_effect=lambda cmd: "/usr/bin/apt-get" if cmd == "apt-get" else None,
+    )
     @patch("devstrap.platform.platform_system", return_value="Linux")
     def test_linux_with_apt(self, mock_sys, mock_which):
         p = detect_platform()
         assert p.os_name == "Linux"
         assert p.pkg_manager == "apt"
 
-    @patch("devstrap.platform.shutil.which", side_effect=lambda cmd: "/usr/bin/dnf" if cmd == "dnf" else None)
+    @patch(
+        "devstrap.platform.shutil.which",
+        side_effect=lambda cmd: "/usr/bin/dnf" if cmd == "dnf" else None,
+    )
     @patch("devstrap.platform.platform_system", return_value="Linux")
     def test_linux_with_dnf(self, mock_sys, mock_which):
         p = detect_platform()
         assert p.os_name == "Linux"
         assert p.pkg_manager == "dnf"
 
-    @patch("devstrap.platform.shutil.which", side_effect=lambda cmd: "/usr/bin/pacman" if cmd == "pacman" else None)
+    @patch(
+        "devstrap.platform.shutil.which",
+        side_effect=lambda cmd: "/usr/bin/pacman" if cmd == "pacman" else None,
+    )
     @patch("devstrap.platform.platform_system", return_value="Linux")
     def test_linux_with_pacman(self, mock_sys, mock_which):
         p = detect_platform()

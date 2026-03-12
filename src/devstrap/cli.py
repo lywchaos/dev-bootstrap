@@ -11,7 +11,7 @@ from rich.table import Table
 from devstrap import __version__
 from devstrap.installer import InstallResult, check_tool, install_all
 from devstrap.models import ToolConfig, load_manifest
-from devstrap.platform import detect_platform
+from devstrap.platform import Platform, detect_platform
 
 app = typer.Typer(help="Install dev tools from a YAML manifest.")
 console = Console()
@@ -25,14 +25,22 @@ def version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: bool = typer.Option(False, "--version", callback=version_callback, is_eager=True, help="Show version."),
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Show version.",
+    ),
 ) -> None:
     pass
 
 
 @app.command(name="list")
 def list_tools(
-    manifest: Optional[Path] = typer.Option(None, "--manifest", help="Path to custom tools.yaml"),
+    manifest: Optional[Path] = typer.Option(
+        None, "--manifest", help="Path to custom tools.yaml"
+    ),
 ) -> None:
     """List all tools and their install status."""
     tools = load_manifest(manifest)
@@ -55,10 +63,18 @@ def list_tools(
 
 @app.command()
 def install(
-    name: Optional[str] = typer.Argument(None, help="Tool name to install (all if omitted)"),
-    interactive: bool = typer.Option(False, "--interactive", "-i", help="Select tools interactively"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be installed"),
-    manifest: Optional[Path] = typer.Option(None, "--manifest", help="Path to custom tools.yaml"),
+    name: Optional[str] = typer.Argument(
+        None, help="Tool name to install (all if omitted)"
+    ),
+    interactive: bool = typer.Option(
+        False, "--interactive", "-i", help="Select tools interactively"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show what would be installed"
+    ),
+    manifest: Optional[Path] = typer.Option(
+        None, "--manifest", help="Path to custom tools.yaml"
+    ),
 ) -> None:
     """Install dev tools."""
     tools = load_manifest(manifest)
@@ -92,7 +108,13 @@ def _interactive_select(tools: list[ToolConfig]) -> list[ToolConfig]:
     checked = []
     for tool in tools:
         installed = check_tool(tool)
-        checked.append({"name": f"{tool.name} — {tool.description}", "value": tool.name, "enabled": not installed})
+        checked.append(
+            {
+                "name": f"{tool.name} — {tool.description}",
+                "value": tool.name,
+                "enabled": not installed,
+            }
+        )
 
     selected = inquirer.checkbox(
         message="Select tools to install:",
@@ -110,25 +132,29 @@ def _get_method(tool: ToolConfig, platform: Platform) -> str:
     return "[dim]none[/dim]"
 
 
+_STATUS_FORMAT = {
+    "skipped": ("[green]✓[/green]", "already installed"),
+    "installed": ("[green]✓[/green]", "installed"),
+    "would_install": ("[blue]→[/blue]", None),  # uses message
+    "failed": ("[red]✗[/red]", None),  # uses message
+}
+
+
 def _print_results(results: list[InstallResult], dry_run: bool = False) -> None:
     console.print()
     for r in results:
-        if r.status == "skipped":
-            console.print(f"  [green]✓[/green] {r.name} — already installed")
-        elif r.status == "installed":
-            console.print(f"  [green]✓[/green] {r.name} — installed")
-        elif r.status == "would_install":
-            console.print(f"  [blue]→[/blue] {r.name} — {r.message}")
-        elif r.status == "failed":
-            console.print(f"  [red]✗[/red] {r.name} — {r.message}")
+        icon, label = _STATUS_FORMAT.get(r.status, ("?", r.status))
+        text = label if label else r.message
+        console.print(f"  {icon} {r.name} — {text}")
 
     console.print()
-    installed = sum(1 for r in results if r.status == "installed")
-    skipped = sum(1 for r in results if r.status == "skipped")
-    failed = sum(1 for r in results if r.status == "failed")
-    would = sum(1 for r in results if r.status == "would_install")
+    counts = {s: sum(1 for r in results if r.status == s) for s in _STATUS_FORMAT}
 
     if dry_run:
-        console.print(f"Dry run: {would} to install, {skipped} already installed")
+        console.print(
+            f"Dry run: {counts['would_install']} to install, {counts['skipped']} already installed"
+        )
     else:
-        console.print(f"Done: {installed} installed, {skipped} skipped, {failed} failed")
+        console.print(
+            f"Done: {counts['installed']} installed, {counts['skipped']} skipped, {counts['failed']} failed"
+        )

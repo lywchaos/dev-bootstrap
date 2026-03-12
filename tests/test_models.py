@@ -1,4 +1,5 @@
 import pytest
+
 from devstrap.models import ToolConfig, load_manifest
 
 
@@ -21,7 +22,10 @@ class TestToolConfig:
             "name": "navi",
             "description": "Cheatsheet tool",
             "check": "navi --version",
-            "install": {"brew": "navi", "script": "curl -sL https://example.com | bash"},
+            "install": {
+                "brew": "navi",
+                "script": "curl -sL https://example.com | bash",
+            },
         }
         tool = ToolConfig.from_dict(data)
         assert tool.install["script"] == "curl -sL https://example.com | bash"

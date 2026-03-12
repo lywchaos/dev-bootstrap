@@ -30,7 +30,10 @@ def check_tool(tool: ToolConfig) -> bool:
         return False
     except subprocess.TimeoutExpired:
         from rich.console import Console
-        Console(stderr=True).print(f"[yellow]Warning:[/yellow] Check for '{tool.name}' timed out")
+
+        Console(stderr=True).print(
+            f"[yellow]Warning:[/yellow] Check for '{tool.name}' timed out"
+        )
         return False
 
 
@@ -41,10 +44,14 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
         cmd = platform.install_cmd(pkg_name)
         try:
             subprocess.run(cmd, check=True, capture_output=True, text=True)
-            return InstallResult(name=tool.name, status="installed", success=True, message="")
+            return InstallResult(
+                name=tool.name, status="installed", success=True, message=""
+            )
         except subprocess.CalledProcessError as e:
             return InstallResult(
-                name=tool.name, status="failed", success=False,
+                name=tool.name,
+                status="failed",
+                success=False,
                 message=e.stderr or str(e),
             )
 
@@ -58,15 +65,21 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
                 capture_output=True,
                 text=True,
             )
-            return InstallResult(name=tool.name, status="installed", success=True, message="")
+            return InstallResult(
+                name=tool.name, status="installed", success=True, message=""
+            )
         except subprocess.CalledProcessError as e:
             return InstallResult(
-                name=tool.name, status="failed", success=False,
+                name=tool.name,
+                status="failed",
+                success=False,
                 message=e.stderr or str(e),
             )
 
     return InstallResult(
-        name=tool.name, status="failed", success=False,
+        name=tool.name,
+        status="failed",
+        success=False,
         message=f"No install method for '{tool.name}' on {platform.os_name} ({platform.pkg_manager})",
     )
 
@@ -79,10 +92,24 @@ def install_all(
     results: list[InstallResult] = []
     for tool in tools:
         if check_tool(tool):
-            results.append(InstallResult(name=tool.name, status="skipped", success=True, message="Already installed"))
+            results.append(
+                InstallResult(
+                    name=tool.name,
+                    status="skipped",
+                    success=True,
+                    message="Already installed",
+                )
+            )
             continue
         if dry_run:
-            results.append(InstallResult(name=tool.name, status="would_install", success=True, message=_describe_install(tool, platform)))
+            results.append(
+                InstallResult(
+                    name=tool.name,
+                    status="would_install",
+                    success=True,
+                    message=_describe_install(tool, platform),
+                )
+            )
             continue
         result = install_tool(tool, platform)
         results.append(result)
