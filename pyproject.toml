@@ -1,0 +1,22 @@
+[project]
+name = "devstrap"
+version = "0.1.0"
+description = "Cross-platform CLI tool to install dev tools"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.9.0",
+    "pyyaml>=6.0",
+    "inquirerpy>=0.3.4",
+]
+
+[project.scripts]
+devstrap = "devstrap.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
