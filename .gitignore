@@ -23,5 +23,8 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# Claude Code
+.claude/
+
 # Superpowers (dev planning artifacts)
 docs/superpowers/
