@@ -27,7 +27,7 @@ Usage: `curl -fsSL https://raw.githubusercontent.com/<user>/dev-bootstrap/main/b
 `bootstrap.sh` does the following:
 
 1. Check if `uv` is installed (`command -v uv`); if not, install via `curl -LsSf https://astral.sh/uv/install.sh | sh`, then source `$HOME/.local/bin/env` (or add `$HOME/.local/bin` to `PATH`) so `uv` is available in the current shell session
-2. Clone the `dev-bootstrap` repo to `~/.local/share/devstrap/` (if no existing clone). If a clone already exists, run `git -C ~/.local/share/devstrap pull --ff-only` to update to latest manifest and code
+2. Clone the `dev-bootstrap` repo to `~/.local/share/devstrap/` (if no existing clone). If a clone already exists, attempt `git -C ~/.local/share/devstrap pull --ff-only`; if that fails (local changes or diverged history), warn the user and continue with the existing checkout as-is
 3. `cd` into the repo and run `uv run devstrap install`
 
 This means the project is always run from a local clone. `uv run` handles venv creation and dependency installation automatically via `pyproject.toml`.
@@ -95,7 +95,7 @@ Fields:
 
 - **`name`** — tool identifier
 - **`description`** — human-readable summary
-- **`check`** — shell command to verify installation (exit code 0 = installed, non-zero = missing; 5-second timeout to avoid hangs)
+- **`check`** — shell command to verify installation (exit code 0 = installed, non-zero = missing; 5-second timeout via `subprocess.run(timeout=5)` — a timeout is treated as "missing" with a warning noting the timeout, so the tool will be offered for install)
 - **`install.<manager>`** — package name for that manager. The key (`brew`, `apt`, `dnf`, `pacman`) maps to the actual command shown in the Platform Detection table (e.g., `apt` key → `sudo apt-get install -y <pkg>`)
 - **`install.script`** — fallback shell command when no native package exists. Used when the detected package manager has no entry for this tool.
 
@@ -111,9 +111,10 @@ Resolution order: detect package manager → use matching key → fall back to `
 |---------|-------------|
 | `devstrap install` | Install all tools (skips already-installed) |
 | `devstrap install <name>` | Install a specific tool by name |
-| `devstrap install -i / --interactive` | Checkbox selector to pick tools |
-| `devstrap list` | Table of all tools with name, description, and installed/missing status |
+| `devstrap install -i / --interactive` | Checkbox selector to pick tools (requires TTY; errors early if stdin is not a terminal) |
+| `devstrap list` | Table of all tools with name, description, install method for current platform, and installed/missing status |
 | `devstrap install --dry-run` | Show tool names and the exact commands that would run, without executing |
+| `devstrap --version` | Show devstrap version |
 
 Global option: `--manifest <path>` overrides the bundled `tools.yaml`.
 
@@ -124,7 +125,7 @@ All install operations run **sequentially** (no parallel installs) to avoid pack
 ### Platform Detection (`platform.py`)
 
 1. `platform.system()` → `Darwin` or `Linux`
-2. macOS: check for `brew` via `shutil.which`; if missing, ask user whether to install Homebrew. If declined, continue with `script`-only tools (tools without a `script` fallback will be skipped with a warning).
+2. macOS: check for `brew` via `shutil.which`; if missing and stdin is a TTY, ask user whether to install Homebrew. If not a TTY (e.g., piped bootstrap), auto-install Homebrew. If user declines interactively, continue with `script`-only tools (tools without a `script` fallback will be skipped with a warning).
 3. Linux: check for `apt-get`, `dnf`, `pacman` in that priority order (first found wins). This order is intentional: Debian/Ubuntu (apt) is most common, then Fedora (dnf), then Arch (pacman).
 4. Returns a `Platform` dataclass with `os_name`, `pkg_manager_name`, and `install_cmd(package)` method
 
