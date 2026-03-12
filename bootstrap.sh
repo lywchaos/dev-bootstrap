@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-REPO_URL="git@github.com:lywchaos/dev-bootstrap.git" # TODO: replace with your actual GitHub URL
+REPO_URL="git@github.com:lywchaos/dev-bootstrap.git"
 INSTALL_DIR="$HOME/.local/share/devstrap"
 
 echo "==> devstrap bootstrap"
