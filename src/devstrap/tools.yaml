@@ -1,0 +1,84 @@
+tools:
+  - name: git
+    description: Version control system
+    check: git --version
+    install:
+      brew: git
+      apt: git
+      dnf: git
+      pacman: git
+
+  - name: zsh
+    description: Z shell
+    check: zsh --version
+    install:
+      brew: zsh
+      apt: zsh
+      dnf: zsh
+      pacman: zsh
+
+  - name: tmux
+    description: Terminal multiplexer
+    check: tmux -V
+    install:
+      brew: tmux
+      apt: tmux
+      dnf: tmux
+      pacman: tmux
+
+  - name: neovim
+    description: Hyperextensible text editor
+    check: nvim --version
+    install:
+      brew: neovim
+      apt: neovim
+      dnf: neovim
+      pacman: neovim
+
+  - name: fzf
+    description: Fuzzy finder
+    check: fzf --version
+    install:
+      brew: fzf
+      apt: fzf
+      dnf: fzf
+      pacman: fzf
+
+  - name: ripgrep
+    description: Fast regex search tool
+    check: rg --version
+    install:
+      brew: ripgrep
+      apt: ripgrep
+      dnf: ripgrep
+      pacman: ripgrep
+
+  - name: fd
+    description: Fast file finder
+    check: fd --version
+    install:
+      brew: fd
+      apt: fd-find
+      dnf: fd-find
+      pacman: fd
+
+  - name: navi
+    description: Interactive cheatsheet tool
+    check: navi --version
+    install:
+      brew: navi
+      script: "curl -sL https://raw.githubusercontent.com/denisidoro/navi/master/scripts/install | bash"
+
+  - name: chezmoi
+    description: Dotfile manager
+    check: chezmoi --version
+    install:
+      brew: chezmoi
+      script: "sh -c \"$(curl -fsLS get.chezmoi.io)\""
+
+  - name: uv
+    description: Python package manager
+    check: uv --version
+    install:
+      brew: uv
+      script: "curl -LsSf https://astral.sh/uv/install.sh | sh"
