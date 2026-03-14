@@ -26,6 +26,22 @@ tools:
         - sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
         - sh -c "$(wget -qO- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
+  - name: zsh-autosuggestions
+    description: Fish-like autosuggestions for zsh
+    deps: [oh-my-zsh]
+    check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+    install:
+      scripts:
+        - git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+  - name: zsh-syntax-highlighting
+    description: Fish-like syntax highlighting for zsh
+    deps: [oh-my-zsh]
+    check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+    install:
+      scripts:
+        - git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
   - name: tmux
     description: Terminal multiplexer
     check: tmux -V
