@@ -19,12 +19,14 @@ def mock_tools():
             description="Version control",
             check="git --version",
             install={"brew": "git"},
+            deps=[],
         ),
         ToolConfig(
             name="navi",
             description="Cheatsheet",
             check="navi --version",
             install={"brew": "navi"},
+            deps=[],
         ),
     ]
 

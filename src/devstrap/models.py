@@ -13,6 +13,7 @@ class ToolConfig:
     description: str
     check: str
     install: dict[str, str | list[str]]
+    deps: list[str]
 
     @classmethod
     def from_dict(cls, data: dict) -> ToolConfig:
@@ -27,6 +28,7 @@ class ToolConfig:
             description=data.get("description", ""),
             check=data.get("check", ""),
             install=data["install"],
+            deps=data.get("deps", []),
         )
 
 

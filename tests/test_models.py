@@ -30,6 +30,27 @@ class TestToolConfig:
         tool = ToolConfig.from_dict(data)
         assert tool.install["scripts"] == ["curl -sL https://example.com | bash"]
 
+    def test_from_dict_with_deps(self):
+        data = {
+            "name": "zsh-autosuggestions",
+            "description": "Autosuggestions",
+            "check": "test -d ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions",
+            "install": {"scripts": ["git clone https://example.com"]},
+            "deps": ["oh-my-zsh"],
+        }
+        tool = ToolConfig.from_dict(data)
+        assert tool.deps == ["oh-my-zsh"]
+
+    def test_from_dict_no_deps_defaults_empty(self):
+        data = {
+            "name": "git",
+            "description": "Version control",
+            "check": "git --version",
+            "install": {"brew": "git"},
+        }
+        tool = ToolConfig.from_dict(data)
+        assert tool.deps == []
+
     def test_from_dict_missing_name_raises(self):
         with pytest.raises(ValueError, match="name"):
             ToolConfig.from_dict({"description": "x", "check": "x", "install": {}})

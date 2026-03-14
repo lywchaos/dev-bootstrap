@@ -15,6 +15,7 @@ def git_tool():
         description="Version control",
         check="git --version",
         install={"brew": "git", "apt": "git"},
+        deps=[],
     )
 
 
@@ -25,6 +26,7 @@ def navi_tool():
         description="Cheatsheet tool",
         check="navi --version",
         install={"brew": "navi", "scripts": ["curl -sL https://example.com | bash"]},
+        deps=[],
     )
 
 
@@ -55,7 +57,9 @@ class TestCheckTool:
         assert check_tool(git_tool) is False
 
     def test_tool_no_check_command(self):
-        tool = ToolConfig(name="x", description="", check="", install={"brew": "x"})
+        tool = ToolConfig(
+            name="x", description="", check="", install={"brew": "x"}, deps=[]
+        )
         assert check_tool(tool) is False
 
 
@@ -92,6 +96,7 @@ class TestInstallTool:
             description="",
             check="",
             install={"scripts": ["curl fail", "wget ok"]},
+            deps=[],
         )
         platform = Platform(os_name="Linux", pkg_manager="apt")
         mock_run.side_effect = [
@@ -110,6 +115,7 @@ class TestInstallTool:
             description="",
             check="",
             install={"scripts": ["curl fail", "wget fail"]},
+            deps=[],
         )
         platform = Platform(os_name="Linux", pkg_manager="apt")
         mock_run.side_effect = [
@@ -121,7 +127,9 @@ class TestInstallTool:
         assert mock_run.call_count == 2
 
     def test_install_no_method(self, mac_platform):
-        tool = ToolConfig(name="x", description="", check="", install={"dnf": "x"})
+        tool = ToolConfig(
+            name="x", description="", check="", install={"dnf": "x"}, deps=[]
+        )
         result = install_tool(tool, mac_platform)
         assert result.success is False
         assert "no install method" in result.message.lower()
@@ -164,8 +172,12 @@ class TestInstallAll:
     @patch("devstrap.installer.check_tool")
     def test_continues_after_failure(self, mock_check, mock_install, mac_platform):
         tools = [
-            ToolConfig(name="a", description="", check="a", install={"brew": "a"}),
-            ToolConfig(name="b", description="", check="b", install={"brew": "b"}),
+            ToolConfig(
+                name="a", description="", check="a", install={"brew": "a"}, deps=[]
+            ),
+            ToolConfig(
+                name="b", description="", check="b", install={"brew": "b"}, deps=[]
+            ),
         ]
         mock_check.return_value = False
         mock_install.side_effect = [
