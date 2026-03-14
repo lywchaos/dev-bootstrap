@@ -74,6 +74,7 @@ tools:
     check: chezmoi --version
     install:
       brew: chezmoi
+      snap: snap install chezmoi --classic
       script: "sh -c \"$(curl -fsLS get.chezmoi.io)\""
 
   - name: uv
