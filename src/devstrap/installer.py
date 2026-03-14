@@ -41,6 +41,7 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
     # Try package manager first
     if platform.pkg_manager and platform.pkg_manager in tool.install:
         pkg_name = tool.install[platform.pkg_manager]
+        assert isinstance(pkg_name, str)
         cmd = platform.install_cmd(pkg_name)
         try:
             subprocess.run(cmd, check=True, text=True)
@@ -55,25 +56,35 @@ def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
                 message=str(e),
             )
 
-    # Fall back to script
-    if "script" in tool.install:
-        try:
-            subprocess.run(
-                tool.install["script"],
-                shell=True,
-                check=True,
-                text=True,
-            )
-            return InstallResult(
-                name=tool.name, status="installed", success=True, message=""
-            )
-        except subprocess.CalledProcessError as e:
-            return InstallResult(
-                name=tool.name,
-                status="failed",
-                success=False,
-                message=str(e),
-            )
+    # Fall back to scripts (try each in order)
+    if "scripts" in tool.install:
+        scripts = tool.install["scripts"]
+        last_error = ""
+        for script in scripts:
+            try:
+                subprocess.run(
+                    script,
+                    shell=True,
+                    check=True,
+                    text=True,
+                )
+                return InstallResult(
+                    name=tool.name, status="installed", success=True, message=""
+                )
+            except subprocess.CalledProcessError as e:
+                last_error = str(e)
+                if script != scripts[-1]:
+                    from rich.console import Console
+
+                    Console(stderr=True).print(
+                        f"[yellow]Warning:[/yellow] Script failed for '{tool.name}': {e}, trying next..."
+                    )
+        return InstallResult(
+            name=tool.name,
+            status="failed",
+            success=False,
+            message=last_error,
+        )
 
     return InstallResult(
         name=tool.name,
@@ -118,8 +129,10 @@ def install_all(
 def _describe_install(tool: ToolConfig, platform: Platform) -> str:
     if platform.pkg_manager and platform.pkg_manager in tool.install:
         pkg_name = tool.install[platform.pkg_manager]
+        assert isinstance(pkg_name, str)
         cmd = platform.install_cmd(pkg_name)
         return " ".join(cmd)
-    if "script" in tool.install:
-        return tool.install["script"]
+    if "scripts" in tool.install:
+        scripts = tool.install["scripts"]
+        return " || ".join(scripts)
     return f"No install method for {platform.os_name} ({platform.pkg_manager})"

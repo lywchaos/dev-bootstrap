@@ -17,18 +17,18 @@ class TestToolConfig:
         assert tool.check == "git --version"
         assert tool.install == {"brew": "git", "apt": "git"}
 
-    def test_from_dict_with_script(self):
+    def test_from_dict_with_scripts(self):
         data = {
             "name": "navi",
             "description": "Cheatsheet tool",
             "check": "navi --version",
             "install": {
                 "brew": "navi",
-                "script": "curl -sL https://example.com | bash",
+                "scripts": ["curl -sL https://example.com | bash"],
             },
         }
         tool = ToolConfig.from_dict(data)
-        assert tool.install["script"] == "curl -sL https://example.com | bash"
+        assert tool.install["scripts"] == ["curl -sL https://example.com | bash"]
 
     def test_from_dict_missing_name_raises(self):
         with pytest.raises(ValueError, match="name"):

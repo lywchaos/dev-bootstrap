@@ -24,7 +24,7 @@ def navi_tool():
         name="navi",
         description="Cheatsheet tool",
         check="navi --version",
-        install={"brew": "navi", "script": "curl -sL https://example.com | bash"},
+        install={"brew": "navi", "scripts": ["curl -sL https://example.com | bash"]},
     )
 
 
@@ -83,6 +83,42 @@ class TestInstallTool:
             check=True,
             text=True,
         )
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_script_chain_fallback(self, mock_run):
+        """First script fails, second succeeds."""
+        tool = ToolConfig(
+            name="test",
+            description="",
+            check="",
+            install={"scripts": ["curl fail", "wget ok"]},
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.side_effect = [
+            subprocess.CalledProcessError(1, "curl fail"),
+            MagicMock(returncode=0),
+        ]
+        result = install_tool(tool, platform)
+        assert result.success is True
+        assert mock_run.call_count == 2
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_all_scripts_fail(self, mock_run):
+        """All scripts fail — returns failure with last error."""
+        tool = ToolConfig(
+            name="test",
+            description="",
+            check="",
+            install={"scripts": ["curl fail", "wget fail"]},
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.side_effect = [
+            subprocess.CalledProcessError(1, "curl fail"),
+            subprocess.CalledProcessError(1, "wget fail"),
+        ]
+        result = install_tool(tool, platform)
+        assert result.success is False
+        assert mock_run.call_count == 2
 
     def test_install_no_method(self, mac_platform):
         tool = ToolConfig(name="x", description="", check="", install={"dnf": "x"})

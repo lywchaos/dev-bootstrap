@@ -166,7 +166,7 @@ def _interactive_select(tools: list[ToolConfig]) -> list[ToolConfig]:
 def _get_method(tool: ToolConfig, platform: Platform) -> str:
     if platform.pkg_manager and platform.pkg_manager in tool.install:
         return platform.pkg_manager
-    if "script" in tool.install:
+    if "scripts" in tool.install:
         return "script"
     return "[dim]none[/dim]"
 
@@ -182,10 +182,12 @@ _STATUS_FORMAT = {
 def _describe_install(tool: ToolConfig, platform: Platform) -> str:
     if platform.pkg_manager and platform.pkg_manager in tool.install:
         pkg_name = tool.install[platform.pkg_manager]
+        assert isinstance(pkg_name, str)
         cmd = platform.install_cmd(pkg_name)
         return " ".join(cmd)
-    if "script" in tool.install:
-        return tool.install["script"]
+    if "scripts" in tool.install:
+        scripts = tool.install["scripts"]
+        return " || ".join(scripts)
     return f"No install method for {platform.os_name} ({platform.pkg_manager})"
 
 

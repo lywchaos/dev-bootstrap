@@ -12,7 +12,7 @@ class ToolConfig:
     name: str
     description: str
     check: str
-    install: dict[str, str]
+    install: dict[str, str | list[str]]
 
     @classmethod
     def from_dict(cls, data: dict) -> ToolConfig:
