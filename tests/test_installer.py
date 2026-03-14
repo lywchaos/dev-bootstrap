@@ -3,7 +3,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from devstrap.installer import InstallResult, check_tool, install_all, install_tool
+from devstrap.installer import (
+    InstallResult,
+    check_tool,
+    install_all,
+    install_tool,
+    resolve_install_order,
+)
 from devstrap.models import ToolConfig
 from devstrap.platform import Platform
 
@@ -188,3 +194,140 @@ class TestInstallAll:
         assert len(results) == 2
         assert results[0].status == "failed"
         assert results[1].status == "installed"
+
+
+class TestResolveInstallOrder:
+    def test_no_deps_preserves_order(self):
+        tools = [
+            ToolConfig(
+                name="a", description="", check="", install={"brew": "a"}, deps=[]
+            ),
+            ToolConfig(
+                name="b", description="", check="", install={"brew": "b"}, deps=[]
+            ),
+            ToolConfig(
+                name="c", description="", check="", install={"brew": "c"}, deps=[]
+            ),
+        ]
+        result = resolve_install_order(tools)
+        assert [t.name for t in result] == ["a", "b", "c"]
+
+    def test_deps_sorted_before_dependents(self):
+        tools = [
+            ToolConfig(
+                name="plugin",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["framework"],
+            ),
+            ToolConfig(
+                name="framework",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=[],
+            ),
+        ]
+        result = resolve_install_order(tools)
+        assert [t.name for t in result] == ["framework", "plugin"]
+
+    def test_transitive_deps(self):
+        tools = [
+            ToolConfig(
+                name="c",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["b"],
+            ),
+            ToolConfig(
+                name="b",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["a"],
+            ),
+            ToolConfig(
+                name="a",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=[],
+            ),
+        ]
+        result = resolve_install_order(tools)
+        names = [t.name for t in result]
+        assert names.index("a") < names.index("b") < names.index("c")
+
+    def test_unknown_dep_raises(self):
+        tools = [
+            ToolConfig(
+                name="plugin",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["nonexistent"],
+            ),
+        ]
+        with pytest.raises(ValueError, match="unknown tool 'nonexistent'"):
+            resolve_install_order(tools)
+
+    def test_cycle_raises(self):
+        tools = [
+            ToolConfig(
+                name="a",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["b"],
+            ),
+            ToolConfig(
+                name="b",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["a"],
+            ),
+        ]
+        with pytest.raises(ValueError, match="cycle"):
+            resolve_install_order(tools)
+
+    def test_diamond_deps(self):
+        """A and B both depend on C; D depends on A and B."""
+        tools = [
+            ToolConfig(
+                name="d",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["a", "b"],
+            ),
+            ToolConfig(
+                name="a",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["c"],
+            ),
+            ToolConfig(
+                name="b",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["c"],
+            ),
+            ToolConfig(
+                name="c",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=[],
+            ),
+        ]
+        result = resolve_install_order(tools)
+        names = [t.name for t in result]
+        assert names.index("c") < names.index("a")
+        assert names.index("c") < names.index("b")
+        assert names.index("a") < names.index("d")
+        assert names.index("b") < names.index("d")
