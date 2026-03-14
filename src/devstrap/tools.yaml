@@ -17,6 +17,13 @@ tools:
       dnf: zsh
       pacman: zsh
 
+  - name: oh-my-zsh
+    description: Framework for managing zsh configuration
+    check: test -d $HOME/.oh-my-zsh
+    install:
+      # --unattended: skip changing default shell and launching zsh after install
+      script: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+
   - name: tmux
     description: Terminal multiplexer
     check: tmux -V
