@@ -6,6 +6,13 @@ tools:
       brew: git
       apt: git
 
+  - name: lazygit
+    description: Terminal UI for git
+    check: lazygit --version
+    install:
+      brew: lazygit
+      apt: lazygit
+
   - name: zsh
     description: Z shell
     check: zsh --version
