@@ -42,6 +42,15 @@ tools:
       scripts:
         - git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
+  - name: powerlevel10k
+    description: A fast and flexible Zsh theme
+    deps: [oh-my-zsh]
+    check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
+    install:
+      scripts:
+        # --depth=1: shallow clone to save bandwidth (theme assets only, no full history)
+        - git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+
   - name: tmux
     description: Terminal multiplexer
     check: tmux -V
