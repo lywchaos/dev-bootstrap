@@ -185,3 +185,85 @@ class TestInstall:
         result = runner.invoke(app, ["install", "--interactive"])
         assert result.exit_code != 0
         assert "tty" in result.output.lower()
+
+
+class TestInstallWithDeps:
+    @patch("devstrap.cli.install_tool")
+    @patch("devstrap.cli.check_tool")
+    @patch("devstrap.cli.detect_platform")
+    @patch("devstrap.cli.load_manifest")
+    def test_install_single_tool_pulls_deps(
+        self,
+        mock_load,
+        mock_detect,
+        mock_check,
+        mock_install,
+        mock_platform,
+    ):
+        """Installing a tool with deps should auto-install uninstalled deps first."""
+        all_tools = [
+            ToolConfig(
+                name="oh-my-zsh",
+                description="",
+                check="test -d ~/.oh-my-zsh",
+                install={"scripts": ["echo"]},
+                deps=[],
+            ),
+            ToolConfig(
+                name="zsh-autosuggestions",
+                description="",
+                check="test -d ~/.x",
+                install={"scripts": ["echo"]},
+                deps=["oh-my-zsh"],
+            ),
+        ]
+        mock_load.return_value = all_tools
+        mock_detect.return_value = mock_platform
+        mock_check.return_value = False
+        mock_install.return_value = InstallResult(
+            name="", status="installed", success=True, message=""
+        )
+        result = runner.invoke(app, ["install", "zsh-autosuggestions"])
+        assert result.exit_code == 0
+        assert mock_install.call_count == 2
+        first_call_tool = mock_install.call_args_list[0][0][0]
+        assert first_call_tool.name == "oh-my-zsh"
+
+    @patch("devstrap.cli.install_tool")
+    @patch("devstrap.cli.check_tool")
+    @patch("devstrap.cli.detect_platform")
+    @patch("devstrap.cli.load_manifest")
+    def test_dep_failed_skips_dependent(
+        self,
+        mock_load,
+        mock_detect,
+        mock_check,
+        mock_install,
+        mock_platform,
+    ):
+        """If a dep fails, dependent tools get dep_failed status."""
+        all_tools = [
+            ToolConfig(
+                name="oh-my-zsh",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=[],
+            ),
+            ToolConfig(
+                name="plugin",
+                description="",
+                check="",
+                install={"scripts": ["echo"]},
+                deps=["oh-my-zsh"],
+            ),
+        ]
+        mock_load.return_value = all_tools
+        mock_detect.return_value = mock_platform
+        mock_check.return_value = False
+        mock_install.return_value = InstallResult(
+            name="oh-my-zsh", status="failed", success=False, message="error"
+        )
+        result = runner.invoke(app, ["install"])
+        assert result.exit_code != 0
+        assert mock_install.call_count == 1

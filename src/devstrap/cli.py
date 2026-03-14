@@ -9,7 +9,12 @@ from rich.console import Console
 from rich.table import Table
 
 from devstrap import __version__
-from devstrap.installer import InstallResult, check_tool, install_tool
+from devstrap.installer import (
+    InstallResult,
+    check_tool,
+    install_tool,
+    resolve_install_order,
+)
 from devstrap.models import ToolConfig, load_manifest
 from devstrap.platform import Platform, detect_platform
 
@@ -80,13 +85,13 @@ def install(
     tools = load_manifest(manifest)
     platform = detect_platform()
 
-    # Single tool install — name validation before any other logic
+    # Single tool install — resolve with transitive deps
     if name:
         matched = [t for t in tools if t.name == name]
         if not matched:
             console.print(f"[red]Error:[/red] Tool '{name}' not found in manifest.")
             raise typer.Exit(code=1)
-        tools = matched
+        tools = _collect_with_deps(matched[0], {t.name: t for t in tools})
 
     # Interactive selection
     if interactive:
@@ -95,6 +100,9 @@ def install(
             raise typer.Exit(code=1)
         tools = _interactive_select(tools)
 
+    # Resolve dependency order
+    tools = resolve_install_order(tools)
+
     results = _install_tools(tools, platform, dry_run=dry_run)
     _print_summary(results, dry_run=dry_run)
 
@@ -102,12 +110,42 @@ def install(
         raise typer.Exit(code=1)
 
 
+def _collect_with_deps(
+    tool: ToolConfig, lookup: dict[str, ToolConfig]
+) -> list[ToolConfig]:
+    """Collect a tool and all its transitive deps."""
+    collected: dict[str, ToolConfig] = {}
+
+    def _walk(t: ToolConfig) -> None:
+        if t.name in collected:
+            return
+        for dep_name in t.deps:
+            _walk(lookup[dep_name])
+        collected[t.name] = t
+
+    _walk(tool)
+    return list(collected.values())
+
+
 def _install_tools(
     tools: list[ToolConfig], platform: Platform, dry_run: bool = False
 ) -> list[InstallResult]:
     results: list[InstallResult] = []
+    failed: set[str] = set()
     for tool in tools:
-        result = _process_tool(tool, platform, dry_run=dry_run)
+        failed_deps = [d for d in tool.deps if d in failed]
+        if failed_deps:
+            result = InstallResult(
+                name=tool.name,
+                status="dep_failed",
+                success=False,
+                message=f"Skipped (dep {failed_deps[0]} failed)",
+            )
+            failed.add(tool.name)
+        else:
+            result = _process_tool(tool, platform, dry_run=dry_run)
+            if not result.success:
+                failed.add(tool.name)
         results.append(result)
         _print_result(result)
     return results
@@ -176,6 +214,7 @@ _STATUS_FORMAT = {
     "installed": ("[green]✓[/green]", "installed"),
     "would_install": ("[blue]→[/blue]", None),  # uses message
     "failed": ("[red]✗[/red]", None),  # uses message
+    "dep_failed": ("[yellow]⊘[/yellow]", None),  # uses message
 }
 
 
@@ -200,6 +239,11 @@ def _print_summary(results: list[InstallResult], dry_run: bool = False) -> None:
             f"Dry run: {counts['would_install']} to install, {counts['skipped']} already installed"
         )
     else:
-        console.print(
-            f"Done: {counts['installed']} installed, {counts['skipped']} skipped, {counts['failed']} failed"
-        )
+        parts = [
+            f"{counts['installed']} installed",
+            f"{counts['skipped']} skipped",
+            f"{counts['failed']} failed",
+        ]
+        if counts["dep_failed"]:
+            parts.append(f"{counts['dep_failed']} dep-skipped")
+        console.print(f"Done: {', '.join(parts)}")
