@@ -133,3 +133,11 @@ tools:
       scripts:
         - "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
         - "wget -qO- https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+
+  - name: claude-code
+    description: Anthropic's CLI for Claude
+    check: claude --version
+    install:
+      scripts:
+        # -fsSL: fail silently on HTTP errors, show errors, follow redirects
+        - "curl -fsSL https://claude.ai/install.sh | bash"
