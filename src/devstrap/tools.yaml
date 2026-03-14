@@ -5,8 +5,6 @@ tools:
     install:
       brew: git
       apt: git
-      dnf: git
-      pacman: git
 
   - name: zsh
     description: Z shell
@@ -14,8 +12,6 @@ tools:
     install:
       brew: zsh
       apt: zsh
-      dnf: zsh
-      pacman: zsh
 
   - name: oh-my-zsh
     description: Framework for managing zsh configuration
@@ -57,17 +53,16 @@ tools:
     install:
       brew: tmux
       apt: tmux
-      dnf: tmux
-      pacman: tmux
 
   - name: neovim
     description: Hyperextensible text editor
     check: nvim --version
     install:
+      # apt omitted: its neovim package is typically far behind the latest release
       brew: neovim
-      apt: neovim
-      dnf: neovim
-      pacman: neovim
+      scripts:
+        # Download latest release tarball, remove old install, extract to /opt
+        - "curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz && sudo rm -rf /opt/nvim-linux-x86_64 && sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz"
 
   - name: nvim-config
     description: Custom Neovim configuration
@@ -83,8 +78,6 @@ tools:
     install:
       brew: fzf
       apt: fzf
-      dnf: fzf
-      pacman: fzf
 
   - name: ripgrep
     description: Fast regex search tool
@@ -92,8 +85,6 @@ tools:
     install:
       brew: ripgrep
       apt: ripgrep
-      dnf: ripgrep
-      pacman: ripgrep
 
   - name: fd
     description: Fast file finder
@@ -101,8 +92,6 @@ tools:
     install:
       brew: fd
       apt: fd-find
-      dnf: fd-find
-      pacman: fd
 
   - name: navi
     description: Interactive cheatsheet tool
@@ -136,8 +125,6 @@ tools:
     install:
       brew: zoxide
       apt: zoxide
-      dnf: zoxide
-      pacman: zoxide
       scripts:
         - "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
         - "wget -qO- https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
