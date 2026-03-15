@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import subprocess
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from devstrap.models import ToolConfig
 from devstrap.platform import Platform
@@ -14,6 +16,27 @@ class InstallResult:
     status: str  # "installed", "skipped", "failed", "would_install"
     success: bool
     message: str
+
+
+def _prepare_script(script: str) -> str:
+    """Prepend set -e to multiline scripts that don't already handle errors."""
+    if "\n" not in script:
+        return script
+    if script.startswith("#!") or script.startswith("set -"):
+        return script
+    return f"set -e\n{script}"
+
+
+def _run_script(script: str) -> None:
+    """Execute a script string with shell=True."""
+    prepared = _prepare_script(script)
+    subprocess.run(prepared, shell=True, check=True, text=True)
+
+
+def _run_script_file(script_file: str) -> None:
+    """Read and execute an external script file."""
+    content = Path(script_file).read_text(encoding="utf-8")
+    subprocess.run(content, shell=True, check=True, text=True)
 
 
 def check_tool(tool: ToolConfig) -> bool:
@@ -89,54 +112,62 @@ def resolve_install_order(tools: list[ToolConfig]) -> list[ToolConfig]:
     return [lookup[name] for name in sorted_names]
 
 
-def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
-    # Try package manager first
-    if platform.pkg_manager and platform.pkg_manager in tool.install:
-        pkg_name = tool.install[platform.pkg_manager]
-        assert isinstance(pkg_name, str)
-        cmd = platform.install_cmd(pkg_name)
+def _try_install(
+    name: str, func: Callable, *args: object, **kwargs: object
+) -> InstallResult:
+    """Run *func* and return an InstallResult (installed or failed)."""
+    try:
+        func(*args, **kwargs)
+        return InstallResult(name=name, status="installed", success=True, message="")
+    except subprocess.CalledProcessError as e:
+        return InstallResult(name=name, status="failed", success=False, message=str(e))
+
+
+def _install_via_alternatives(tool: ToolConfig, spec) -> InstallResult:
+    """Try each alternative in order; return on first success."""
+    last_error = ""
+    for i, entry in enumerate(spec.alternatives):
         try:
-            subprocess.run(cmd, check=True, text=True)
+            if entry.script:
+                _run_script(entry.script)
+            elif entry.script_file:
+                _run_script_file(entry.script_file)
             return InstallResult(
                 name=tool.name, status="installed", success=True, message=""
             )
         except subprocess.CalledProcessError as e:
-            return InstallResult(
-                name=tool.name,
-                status="failed",
-                success=False,
-                message=str(e),
-            )
+            last_error = str(e)
+            if i < len(spec.alternatives) - 1:
+                from rich.console import Console
 
-    # Fall back to scripts (try each in order)
-    if "scripts" in tool.install:
-        scripts = tool.install["scripts"]
-        last_error = ""
-        for script in scripts:
-            try:
-                subprocess.run(
-                    script,
-                    shell=True,
-                    check=True,
-                    text=True,
+                Console(stderr=True).print(
+                    f"[yellow]Warning:[/yellow] Script failed for '{tool.name}': {e}, trying next..."
                 )
-                return InstallResult(
-                    name=tool.name, status="installed", success=True, message=""
-                )
-            except subprocess.CalledProcessError as e:
-                last_error = str(e)
-                if script != scripts[-1]:
-                    from rich.console import Console
+    return InstallResult(
+        name=tool.name, status="failed", success=False, message=last_error
+    )
 
-                    Console(stderr=True).print(
-                        f"[yellow]Warning:[/yellow] Script failed for '{tool.name}': {e}, trying next..."
-                    )
-        return InstallResult(
-            name=tool.name,
-            status="failed",
-            success=False,
-            message=last_error,
-        )
+
+def install_tool(tool: ToolConfig, platform: Platform) -> InstallResult:
+    spec = tool.install
+
+    # Try package manager first
+    if platform.pkg_manager and platform.pkg_manager in spec.package_managers:
+        pkg_name = spec.package_managers[platform.pkg_manager]
+        cmd = platform.install_cmd(pkg_name)
+        return _try_install(tool.name, subprocess.run, cmd, check=True, text=True)
+
+    # Try single script
+    if spec.script:
+        return _try_install(tool.name, _run_script, spec.script)
+
+    # Try script file
+    if spec.script_file:
+        return _try_install(tool.name, _run_script_file, spec.script_file)
+
+    # Try alternatives (fallback chain)
+    if spec.alternatives:
+        return _install_via_alternatives(tool, spec)
 
     return InstallResult(
         name=tool.name,
@@ -179,12 +210,21 @@ def install_all(
 
 
 def _describe_install(tool: ToolConfig, platform: Platform) -> str:
-    if platform.pkg_manager and platform.pkg_manager in tool.install:
-        pkg_name = tool.install[platform.pkg_manager]
-        assert isinstance(pkg_name, str)
+    spec = tool.install
+    if platform.pkg_manager and platform.pkg_manager in spec.package_managers:
+        pkg_name = spec.package_managers[platform.pkg_manager]
         cmd = platform.install_cmd(pkg_name)
         return " ".join(cmd)
-    if "scripts" in tool.install:
-        scripts = tool.install["scripts"]
-        return " || ".join(scripts)
+    if spec.script:
+        return spec.script.split("\n")[0] + ("..." if "\n" in spec.script else "")
+    if spec.script_file:
+        return f"run {spec.script_file}"
+    if spec.alternatives:
+        parts = []
+        for entry in spec.alternatives:
+            if entry.script:
+                parts.append(entry.script)
+            elif entry.script_file:
+                parts.append(f"run {entry.script_file}")
+        return " || ".join(parts)
     return f"No install method for {platform.os_name} ({platform.pkg_manager})"

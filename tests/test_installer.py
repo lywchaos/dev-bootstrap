@@ -5,6 +5,7 @@ import pytest
 
 from devstrap.installer import (
     InstallResult,
+    _describe_install,
     check_tool,
     install_all,
     install_tool,
@@ -16,23 +17,28 @@ from devstrap.platform import Platform
 
 @pytest.fixture
 def git_tool():
-    return ToolConfig(
-        name="git",
-        description="Version control",
-        check="git --version",
-        install={"brew": "git", "apt": "git"},
-        deps=[],
+    return ToolConfig.from_dict(
+        {
+            "name": "git",
+            "description": "Version control",
+            "check": "git --version",
+            "install": {"brew": "git", "apt": "git"},
+        }
     )
 
 
 @pytest.fixture
 def navi_tool():
-    return ToolConfig(
-        name="navi",
-        description="Cheatsheet tool",
-        check="navi --version",
-        install={"brew": "navi", "scripts": ["curl -sL https://example.com | bash"]},
-        deps=[],
+    return ToolConfig.from_dict(
+        {
+            "name": "navi",
+            "description": "Cheatsheet tool",
+            "check": "navi --version",
+            "install": {
+                "brew": "navi",
+                "script": "curl -sL https://example.com | bash",
+            },
+        }
     )
 
 
@@ -63,8 +69,13 @@ class TestCheckTool:
         assert check_tool(git_tool) is False
 
     def test_tool_no_check_command(self):
-        tool = ToolConfig(
-            name="x", description="", check="", install={"brew": "x"}, deps=[]
+        tool = ToolConfig.from_dict(
+            {
+                "name": "x",
+                "description": "",
+                "check": "",
+                "install": {"brew": "x"},
+            }
         )
         assert check_tool(tool) is False
 
@@ -82,7 +93,7 @@ class TestInstallTool:
         )
 
     @patch("devstrap.installer.subprocess.run")
-    def test_install_via_script_fallback(self, mock_run, navi_tool):
+    def test_install_via_script(self, mock_run, navi_tool):
         platform = Platform(os_name="Linux", pkg_manager="apt")
         mock_run.return_value = MagicMock(returncode=0)
         result = install_tool(navi_tool, platform)
@@ -95,14 +106,127 @@ class TestInstallTool:
         )
 
     @patch("devstrap.installer.subprocess.run")
-    def test_install_script_chain_fallback(self, mock_run):
-        """First script fails, second succeeds."""
-        tool = ToolConfig(
-            name="test",
-            description="",
-            check="",
-            install={"scripts": ["curl fail", "wget ok"]},
-            deps=[],
+    def test_install_via_multiline_script_prepends_set_e(self, mock_run):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "line1\nline2"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.return_value = MagicMock(returncode=0)
+        result = install_tool(tool, platform)
+        assert result.success is True
+        mock_run.assert_called_once_with(
+            "set -e\nline1\nline2",
+            shell=True,
+            check=True,
+            text=True,
+        )
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_via_script_no_set_e_for_single_line(self, mock_run):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "curl -sL example.com | sh"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.return_value = MagicMock(returncode=0)
+        result = install_tool(tool, platform)
+        assert result.success is True
+        mock_run.assert_called_once_with(
+            "curl -sL example.com | sh",
+            shell=True,
+            check=True,
+            text=True,
+        )
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_via_script_no_set_e_when_shebang(self, mock_run):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "#!/bin/bash\nline1\nline2"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.return_value = MagicMock(returncode=0)
+        result = install_tool(tool, platform)
+        assert result.success is True
+        mock_run.assert_called_once_with(
+            "#!/bin/bash\nline1\nline2",
+            shell=True,
+            check=True,
+            text=True,
+        )
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_via_script_no_set_e_when_already_present(self, mock_run):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "set -euo pipefail\nline1\nline2"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.return_value = MagicMock(returncode=0)
+        result = install_tool(tool, platform)
+        assert result.success is True
+        mock_run.assert_called_once_with(
+            "set -euo pipefail\nline1\nline2",
+            shell=True,
+            check=True,
+            text=True,
+        )
+
+    @patch("devstrap.installer.subprocess.run")
+    @patch("devstrap.installer.Path.read_text", return_value="#!/bin/bash\necho hello")
+    def test_install_via_script_file(self, mock_read, mock_run):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script_file": "scripts/install.sh"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        mock_run.return_value = MagicMock(returncode=0)
+        result = install_tool(tool, platform)
+        assert result.success is True
+        mock_read.assert_called_once()
+        mock_run.assert_called_once_with(
+            "#!/bin/bash\necho hello",
+            shell=True,
+            check=True,
+            text=True,
+        )
+
+    @patch("devstrap.installer.subprocess.run")
+    def test_install_alternatives_fallback(self, mock_run):
+        """First alternative fails, second succeeds."""
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {
+                    "alternatives": [
+                        {"script": "curl fail"},
+                        {"script": "wget ok"},
+                    ],
+                },
+            }
         )
         platform = Platform(os_name="Linux", pkg_manager="apt")
         mock_run.side_effect = [
@@ -114,14 +238,20 @@ class TestInstallTool:
         assert mock_run.call_count == 2
 
     @patch("devstrap.installer.subprocess.run")
-    def test_install_all_scripts_fail(self, mock_run):
-        """All scripts fail — returns failure with last error."""
-        tool = ToolConfig(
-            name="test",
-            description="",
-            check="",
-            install={"scripts": ["curl fail", "wget fail"]},
-            deps=[],
+    def test_install_alternatives_all_fail(self, mock_run):
+        """All alternatives fail — returns failure with last error."""
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {
+                    "alternatives": [
+                        {"script": "curl fail"},
+                        {"script": "wget fail"},
+                    ],
+                },
+            }
         )
         platform = Platform(os_name="Linux", pkg_manager="apt")
         mock_run.side_effect = [
@@ -133,8 +263,13 @@ class TestInstallTool:
         assert mock_run.call_count == 2
 
     def test_install_no_method(self, mac_platform):
-        tool = ToolConfig(
-            name="x", description="", check="", install={"dnf": "x"}, deps=[]
+        tool = ToolConfig.from_dict(
+            {
+                "name": "x",
+                "description": "",
+                "check": "",
+                "install": {"apt": "x"},
+            }
         )
         result = install_tool(tool, mac_platform)
         assert result.success is False
@@ -178,11 +313,21 @@ class TestInstallAll:
     @patch("devstrap.installer.check_tool")
     def test_continues_after_failure(self, mock_check, mock_install, mac_platform):
         tools = [
-            ToolConfig(
-                name="a", description="", check="a", install={"brew": "a"}, deps=[]
+            ToolConfig.from_dict(
+                {
+                    "name": "a",
+                    "description": "",
+                    "check": "a",
+                    "install": {"brew": "a"},
+                }
             ),
-            ToolConfig(
-                name="b", description="", check="b", install={"brew": "b"}, deps=[]
+            ToolConfig.from_dict(
+                {
+                    "name": "b",
+                    "description": "",
+                    "check": "b",
+                    "install": {"brew": "b"},
+                }
             ),
         ]
         mock_check.return_value = False
@@ -199,14 +344,29 @@ class TestInstallAll:
 class TestResolveInstallOrder:
     def test_no_deps_preserves_order(self):
         tools = [
-            ToolConfig(
-                name="a", description="", check="", install={"brew": "a"}, deps=[]
+            ToolConfig.from_dict(
+                {
+                    "name": "a",
+                    "description": "",
+                    "check": "",
+                    "install": {"brew": "a"},
+                }
             ),
-            ToolConfig(
-                name="b", description="", check="", install={"brew": "b"}, deps=[]
+            ToolConfig.from_dict(
+                {
+                    "name": "b",
+                    "description": "",
+                    "check": "",
+                    "install": {"brew": "b"},
+                }
             ),
-            ToolConfig(
-                name="c", description="", check="", install={"brew": "c"}, deps=[]
+            ToolConfig.from_dict(
+                {
+                    "name": "c",
+                    "description": "",
+                    "check": "",
+                    "install": {"brew": "c"},
+                }
             ),
         ]
         result = resolve_install_order(tools)
@@ -214,19 +374,22 @@ class TestResolveInstallOrder:
 
     def test_deps_sorted_before_dependents(self):
         tools = [
-            ToolConfig(
-                name="plugin",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["framework"],
+            ToolConfig.from_dict(
+                {
+                    "name": "plugin",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["framework"],
+                }
             ),
-            ToolConfig(
-                name="framework",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=[],
+            ToolConfig.from_dict(
+                {
+                    "name": "framework",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                }
             ),
         ]
         result = resolve_install_order(tools)
@@ -234,26 +397,31 @@ class TestResolveInstallOrder:
 
     def test_transitive_deps(self):
         tools = [
-            ToolConfig(
-                name="c",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["b"],
+            ToolConfig.from_dict(
+                {
+                    "name": "c",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["b"],
+                }
             ),
-            ToolConfig(
-                name="b",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["a"],
+            ToolConfig.from_dict(
+                {
+                    "name": "b",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["a"],
+                }
             ),
-            ToolConfig(
-                name="a",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=[],
+            ToolConfig.from_dict(
+                {
+                    "name": "a",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                }
             ),
         ]
         result = resolve_install_order(tools)
@@ -262,12 +430,14 @@ class TestResolveInstallOrder:
 
     def test_unknown_dep_raises(self):
         tools = [
-            ToolConfig(
-                name="plugin",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["nonexistent"],
+            ToolConfig.from_dict(
+                {
+                    "name": "plugin",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["nonexistent"],
+                }
             ),
         ]
         with pytest.raises(ValueError, match="unknown tool 'nonexistent'"):
@@ -275,19 +445,23 @@ class TestResolveInstallOrder:
 
     def test_cycle_raises(self):
         tools = [
-            ToolConfig(
-                name="a",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["b"],
+            ToolConfig.from_dict(
+                {
+                    "name": "a",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["b"],
+                }
             ),
-            ToolConfig(
-                name="b",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["a"],
+            ToolConfig.from_dict(
+                {
+                    "name": "b",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["a"],
+                }
             ),
         ]
         with pytest.raises(ValueError, match="cycle"):
@@ -296,33 +470,40 @@ class TestResolveInstallOrder:
     def test_diamond_deps(self):
         """A and B both depend on C; D depends on A and B."""
         tools = [
-            ToolConfig(
-                name="d",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["a", "b"],
+            ToolConfig.from_dict(
+                {
+                    "name": "d",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["a", "b"],
+                }
             ),
-            ToolConfig(
-                name="a",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["c"],
+            ToolConfig.from_dict(
+                {
+                    "name": "a",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["c"],
+                }
             ),
-            ToolConfig(
-                name="b",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["c"],
+            ToolConfig.from_dict(
+                {
+                    "name": "b",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["c"],
+                }
             ),
-            ToolConfig(
-                name="c",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=[],
+            ToolConfig.from_dict(
+                {
+                    "name": "c",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                }
             ),
         ]
         result = resolve_install_order(tools)
@@ -331,3 +512,74 @@ class TestResolveInstallOrder:
         assert names.index("c") < names.index("b")
         assert names.index("a") < names.index("d")
         assert names.index("b") < names.index("d")
+
+
+class TestDescribeInstall:
+    def test_describe_pkg_manager(self, mac_platform):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "git",
+                "description": "",
+                "check": "",
+                "install": {"brew": "git"},
+            }
+        )
+        result = _describe_install(tool, mac_platform)
+        assert result == "brew install git"
+
+    def test_describe_single_line_script(self):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "curl -sL example.com | sh"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        result = _describe_install(tool, platform)
+        assert result == "curl -sL example.com | sh"
+
+    def test_describe_multiline_script_truncates(self):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script": "line1\nline2\nline3"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        result = _describe_install(tool, platform)
+        assert result == "line1..."
+
+    def test_describe_script_file(self):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {"script_file": "scripts/install.sh"},
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        result = _describe_install(tool, platform)
+        assert result == "run scripts/install.sh"
+
+    def test_describe_alternatives(self):
+        tool = ToolConfig.from_dict(
+            {
+                "name": "test",
+                "description": "",
+                "check": "",
+                "install": {
+                    "alternatives": [
+                        {"script": "curl ... | sh"},
+                        {"script": "wget ... | sh"},
+                    ],
+                },
+            }
+        )
+        platform = Platform(os_name="Linux", pkg_manager="apt")
+        result = _describe_install(tool, platform)
+        assert result == "curl ... | sh || wget ... | sh"
