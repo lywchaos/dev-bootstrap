@@ -193,7 +193,7 @@ tools:
     def test_load_bundled_manifest(self):
         """The bundled tools.yaml should load without errors."""
         tools = load_manifest()
-        assert len(tools) >= 12
+        assert len(tools) >= 13
         names = [t.name for t in tools]
         assert "git" in names
         assert "neovim" in names

@@ -6,12 +6,26 @@ tools:
       brew: git
       apt: git
 
+  - name: go
+    description: Go programming language
+    check: go version
+    install:
+      brew: go
+      # Fetch latest version, download tarball, remove old install, extract
+      script: |
+        GO_VERSION=$(curl -s 'https://go.dev/VERSION?m=text' | head -n 1)
+        curl -LO "https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz"
+        sudo rm -rf /usr/local/go
+        sudo tar -C /usr/local -xzf "${GO_VERSION}.linux-amd64.tar.gz"
+        rm "${GO_VERSION}.linux-amd64.tar.gz"
+
   - name: lazygit
     description: Terminal UI for git
+    deps: [go]
     check: lazygit --version
     install:
       brew: lazygit
-      apt: lazygit
+      script: go install github.com/jesseduffield/lazygit@latest
 
   - name: zsh
     description: Z shell
