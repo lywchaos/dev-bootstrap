@@ -24,35 +24,32 @@ tools:
     description: Framework for managing zsh configuration
     check: test -d $HOME/.oh-my-zsh
     install:
-      scripts:
-        # --unattended: skip changing default shell and launching zsh after install
-        - sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-        - sh -c "$(wget -qO- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+      # --unattended: skip changing default shell and launching zsh after install
+      alternatives:
+        - script: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        - script: sh -c "$(wget -qO- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
   - name: zsh-autosuggestions
     description: Fish-like autosuggestions for zsh
     deps: [oh-my-zsh]
     check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
     install:
-      scripts:
-        - git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+      script: git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 
   - name: zsh-syntax-highlighting
     description: Fish-like syntax highlighting for zsh
     deps: [oh-my-zsh]
     check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
     install:
-      scripts:
-        - git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+      script: git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
   - name: powerlevel10k
     description: A fast and flexible Zsh theme
     deps: [oh-my-zsh]
     check: test -d ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/themes/powerlevel10k
     install:
-      scripts:
-        # --depth=1: shallow clone to save bandwidth (theme assets only, no full history)
-        - git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+      # --depth=1: shallow clone to save bandwidth (theme assets only, no full history)
+      script: git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
 
   - name: tmux
     description: Terminal multiplexer
@@ -67,17 +64,18 @@ tools:
     install:
       # apt omitted: its neovim package is typically far behind the latest release
       brew: neovim
-      scripts:
-        # Download latest release tarball, remove old install, extract to /opt
-        - "curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz && sudo rm -rf /opt/nvim-linux-x86_64 && sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz"
+      # Download latest release tarball, remove old install, extract to /opt
+      script: |
+        curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+        sudo rm -rf /opt/nvim-linux-x86_64
+        sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
 
   - name: nvim-config
     description: Custom Neovim configuration
     deps: [neovim]
     check: test -d ~/.config/nvim
     install:
-      scripts:
-        - git clone git@github.com:lywchaos/nvim-config.git ~/.config/nvim
+      script: git clone git@github.com:lywchaos/nvim-config.git ~/.config/nvim
 
   - name: fzf
     description: Fuzzy finder
@@ -105,8 +103,8 @@ tools:
     check: navi --version
     install:
       brew: navi
-      scripts:
-        - "curl -sL https://raw.githubusercontent.com/denisidoro/navi/master/scripts/install | bash"
+      # -sL: silent mode with redirect following
+      script: "curl -sL https://raw.githubusercontent.com/denisidoro/navi/master/scripts/install | bash"
 
   - name: chezmoi
     description: Dotfile manager
@@ -114,17 +112,18 @@ tools:
     install:
       brew: chezmoi
       snap: snap install chezmoi --classic
-      scripts:
-        - "sh -c \"$(curl -fsLS get.chezmoi.io)\""
+      # -fsLS: fail silently on errors, show errors, follow redirects, use TLS
+      script: "sh -c \"$(curl -fsLS get.chezmoi.io)\""
 
   - name: uv
     description: Python package manager
     check: uv --version
     install:
       brew: uv
-      scripts:
-        - "curl -LsSf https://astral.sh/uv/install.sh | sh"
-        - "wget -qO- https://astral.sh/uv/install.sh | sh"
+      alternatives:
+        # -LsSf: follow redirects, silent, show errors, fail on HTTP errors
+        - script: "curl -LsSf https://astral.sh/uv/install.sh | sh"
+        - script: "wget -qO- https://astral.sh/uv/install.sh | sh"
 
   - name: zoxide
     description: Smarter cd command
@@ -132,14 +131,14 @@ tools:
     install:
       brew: zoxide
       apt: zoxide
-      scripts:
-        - "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
-        - "wget -qO- https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+      alternatives:
+        # -sSfL: silent, show errors, fail on HTTP errors, follow redirects
+        - script: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
+        - script: "wget -qO- https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
 
   - name: claude-code
     description: Anthropic's CLI for Claude
     check: claude --version
     install:
-      scripts:
-        # -fsSL: fail silently on HTTP errors, show errors, follow redirects
-        - "curl -fsSL https://claude.ai/install.sh | bash"
+      # -fsSL: fail silently on HTTP errors, show errors, follow redirects
+      script: "curl -fsSL https://claude.ai/install.sh | bash"
