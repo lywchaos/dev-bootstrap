@@ -11,6 +11,7 @@ from rich.table import Table
 from devstrap import __version__
 from devstrap.installer import (
     InstallResult,
+    _describe_install,
     check_tool,
     install_tool,
     resolve_install_order,
@@ -202,9 +203,10 @@ def _interactive_select(tools: list[ToolConfig]) -> list[ToolConfig]:
 
 
 def _get_method(tool: ToolConfig, platform: Platform) -> str:
-    if platform.pkg_manager and platform.pkg_manager in tool.install:
+    spec = tool.install
+    if platform.pkg_manager and platform.pkg_manager in spec.package_managers:
         return platform.pkg_manager
-    if "scripts" in tool.install:
+    if spec.script or spec.script_file or spec.alternatives:
         return "script"
     return "[dim]none[/dim]"
 
@@ -216,18 +218,6 @@ _STATUS_FORMAT = {
     "failed": ("[red]✗[/red]", None),  # uses message
     "dep_failed": ("[yellow]⊘[/yellow]", None),  # uses message
 }
-
-
-def _describe_install(tool: ToolConfig, platform: Platform) -> str:
-    if platform.pkg_manager and platform.pkg_manager in tool.install:
-        pkg_name = tool.install[platform.pkg_manager]
-        assert isinstance(pkg_name, str)
-        cmd = platform.install_cmd(pkg_name)
-        return " ".join(cmd)
-    if "scripts" in tool.install:
-        scripts = tool.install["scripts"]
-        return " || ".join(scripts)
-    return f"No install method for {platform.os_name} ({platform.pkg_manager})"
 
 
 def _print_summary(results: list[InstallResult], dry_run: bool = False) -> None:

@@ -14,19 +14,21 @@ runner = CliRunner()
 @pytest.fixture
 def mock_tools():
     return [
-        ToolConfig(
-            name="git",
-            description="Version control",
-            check="git --version",
-            install={"brew": "git"},
-            deps=[],
+        ToolConfig.from_dict(
+            {
+                "name": "git",
+                "description": "Version control",
+                "check": "git --version",
+                "install": {"brew": "git"},
+            }
         ),
-        ToolConfig(
-            name="navi",
-            description="Cheatsheet",
-            check="navi --version",
-            install={"brew": "navi"},
-            deps=[],
+        ToolConfig.from_dict(
+            {
+                "name": "navi",
+                "description": "Cheatsheet",
+                "check": "navi --version",
+                "install": {"brew": "navi"},
+            }
         ),
     ]
 
@@ -202,19 +204,22 @@ class TestInstallWithDeps:
     ):
         """Installing a tool with deps should auto-install uninstalled deps first."""
         all_tools = [
-            ToolConfig(
-                name="oh-my-zsh",
-                description="",
-                check="test -d ~/.oh-my-zsh",
-                install={"scripts": ["echo"]},
-                deps=[],
+            ToolConfig.from_dict(
+                {
+                    "name": "oh-my-zsh",
+                    "description": "",
+                    "check": "test -d ~/.oh-my-zsh",
+                    "install": {"script": "echo"},
+                }
             ),
-            ToolConfig(
-                name="zsh-autosuggestions",
-                description="",
-                check="test -d ~/.x",
-                install={"scripts": ["echo"]},
-                deps=["oh-my-zsh"],
+            ToolConfig.from_dict(
+                {
+                    "name": "zsh-autosuggestions",
+                    "description": "",
+                    "check": "test -d ~/.x",
+                    "install": {"script": "echo"},
+                    "deps": ["oh-my-zsh"],
+                }
             ),
         ]
         mock_load.return_value = all_tools
@@ -243,19 +248,22 @@ class TestInstallWithDeps:
     ):
         """If a dep fails, dependent tools get dep_failed status."""
         all_tools = [
-            ToolConfig(
-                name="oh-my-zsh",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=[],
+            ToolConfig.from_dict(
+                {
+                    "name": "oh-my-zsh",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                }
             ),
-            ToolConfig(
-                name="plugin",
-                description="",
-                check="",
-                install={"scripts": ["echo"]},
-                deps=["oh-my-zsh"],
+            ToolConfig.from_dict(
+                {
+                    "name": "plugin",
+                    "description": "",
+                    "check": "",
+                    "install": {"script": "echo"},
+                    "deps": ["oh-my-zsh"],
+                }
             ),
         ]
         mock_load.return_value = all_tools
