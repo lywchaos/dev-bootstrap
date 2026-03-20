@@ -107,7 +107,8 @@ tools:
 
   - name: fd
     description: Fast file finder
-    check: fd --version
+    # fd-find installs as 'fdfind' on Ubuntu
+    check: fd --version || fdfind --version
     install:
       brew: fd
       apt: fd-find
