@@ -151,6 +151,23 @@ tools:
         - script: "curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
         - script: "wget -qO- https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh"
 
+  - name: rust
+    description: Systems programming language (installed via rustup)
+    check: rustc --version
+    install:
+      alternatives:
+        # --proto '=https' --tlsv1.2: enforce HTTPS/TLS 1.2+ (per official rustup docs)
+        # -s -- -y: pass -y to rustup-init for non-interactive install
+        - script: "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
+        - script: "wget -qO- https://sh.rustup.rs | sh -s -- -y"
+
+  - name: just
+    description: Command runner for project-specific tasks
+    deps: [rust]
+    check: just --version
+    install:
+      script: cargo install just
+
   - name: claude-code
     description: Anthropic's CLI for Claude
     check: claude --version

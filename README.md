@@ -35,6 +35,8 @@ This will:
 | chezmoi | Dotfile manager | -- |
 | uv | Python package manager | -- |
 | zoxide | Smarter cd command | -- |
+| rust | Systems programming language (installed via rustup) | -- |
+| just | Command runner for project-specific tasks | rust |
 | claude-code | Anthropic's CLI for Claude | -- |
 
 Tools with dependencies are automatically installed in the correct order. When installing a single tool, its transitive dependencies are pulled in automatically.
