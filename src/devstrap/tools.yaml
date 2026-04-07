@@ -128,7 +128,7 @@ tools:
       brew: chezmoi
       snap: snap install chezmoi --classic
       # -fsLS: fail silently on errors, show errors, follow redirects, use TLS
-      script: "sh -c \"$(curl -fsLS get.chezmoi.io)\""
+      script: 'sh -c "$(curl -fsLS get.chezmoi.io)"'
 
   - name: uv
     description: Python package manager
@@ -174,3 +174,17 @@ tools:
     install:
       # -fsSL: fail silently on HTTP errors, show errors, follow redirects
       script: "curl -fsSL https://claude.ai/install.sh | bash"
+
+  - name: sd
+    description: sd is an intuitive find & replace CLI.
+    check: sd --version
+    deps: [rust]
+    install:
+      script: cargo install sd
+
+  - name: eza
+    description: A modern alternative to ls
+    check: eza
+    deps: [rust]
+    install:
+      script: cargo install eza
