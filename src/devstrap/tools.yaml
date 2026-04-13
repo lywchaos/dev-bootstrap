@@ -188,3 +188,9 @@ tools:
     deps: [rust]
     install:
       script: cargo install eza
+
+  - name: codex
+    description: codex
+    check: codex --version
+    install:
+      script: npm i -g @openai/codex
