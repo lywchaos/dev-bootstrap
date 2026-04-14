@@ -172,8 +172,9 @@ tools:
     description: Anthropic's CLI for Claude
     check: claude --version
     install:
-      # -fsSL: fail silently on HTTP errors, show errors, follow redirects
-      script: "curl -fsSL https://claude.ai/install.sh | bash"
+      alternatives:
+        - script: "curl -fsSL https://claude.ai/install.sh | bash"
+        - script: "npm install -g @anthropic-ai/claude-code"
 
   - name: sd
     description: sd is an intuitive find & replace CLI.
