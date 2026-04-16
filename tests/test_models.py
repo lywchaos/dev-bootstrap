@@ -197,5 +197,6 @@ tools:
         names = [t.name for t in tools]
         assert "git" in names
         assert "neovim" in names
+        assert "yq" in names
         assert "zsh-autosuggestions" in names
         assert "zsh-syntax-highlighting" in names

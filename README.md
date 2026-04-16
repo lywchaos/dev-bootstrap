@@ -31,6 +31,7 @@ This will:
 | fzf | Fuzzy finder | -- |
 | ripgrep | Fast regex search tool | -- |
 | fd | Fast file finder | -- |
+| yq | Portable YAML processor | -- |
 | navi | Interactive cheatsheet tool | -- |
 | chezmoi | Dotfile manager | -- |
 | uv | Python package manager | -- |

@@ -113,6 +113,18 @@ tools:
       brew: fd
       apt: fd-find
 
+  - name: yq
+    description: Portable YAML processor
+    check: yq --version
+    install:
+      brew: yq
+      # apt omitted: Debian's yq package is not the upstream mikefarah/yq release
+      # Follow GitHub's latest-release redirect, make the binary executable, then move it into /usr/local/bin
+      script: |
+        curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o yq
+        chmod +x yq
+        sudo mv yq /usr/local/bin/yq
+
   - name: navi
     description: Interactive cheatsheet tool
     check: navi --version
