@@ -185,8 +185,8 @@ tools:
     check: claude --version
     install:
       alternatives:
-        - script: "curl -fsSL https://claude.ai/install.sh | bash"
         - script: "npm install -g @anthropic-ai/claude-code"
+        - script: "curl -fsSL https://claude.ai/install.sh | bash"
 
   - name: sd
     description: sd is an intuitive find & replace CLI.
