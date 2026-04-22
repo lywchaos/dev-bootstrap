@@ -207,3 +207,14 @@ tools:
     check: codex --version
     install:
       script: npm i -g @openai/codex
+
+  - name: yt-dlp
+    description: Feature-rich command-line audio/video downloader
+    check: yt-dlp --version
+    install:
+      brew: yt-dlp
+      # -L: follow redirects to GitHub's release asset
+      script: |
+        curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o yt-dlp
+        chmod +x yt-dlp
+        sudo mv yt-dlp /usr/local/bin/yt-dlp
